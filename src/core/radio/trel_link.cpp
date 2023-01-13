@@ -72,6 +72,12 @@ Link::Link(Instance &aInstance)
 
 void Link::AfterInit(void) { mInterface.Init(); }
 
+void Link::Init(void)
+{
+    OT_ASSERT(mState == kStateDisabled);
+    SetState(kStateSleep);
+}
+
 void Link::Enable(void)
 {
     mInterface.Enable();

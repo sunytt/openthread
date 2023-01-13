@@ -81,7 +81,7 @@ typedef uint16_t otTrelPeerIterator;
  * with the service name is "_trel._udp" indicating its support for TREL. Device is then ready to receive TREL messages
  * from peers.
  *
- * @note By default the OpenThread stack enables the TREL operation on start.
+ * @note By default the OpenThread stack leaves TREL operation disabled on start.
  *
  * @param[in] aInstance   The OpenThread instance.
  *

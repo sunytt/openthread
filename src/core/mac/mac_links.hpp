@@ -413,7 +413,8 @@ public:
     }
 
     /**
-     * This method enables all radio links.
+     * This method enables all radio links except for TREL.
+     * TREL link is initiated, and will be enabled according to the feature flag 'enable_trel'.
      *
      */
     void Enable(void)
@@ -422,7 +423,7 @@ public:
         IgnoreError(mSubMac.Enable());
 #endif
 #if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
-        mTrel.Enable();
+        mTrel.Init();
 #endif
     }
 

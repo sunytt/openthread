@@ -102,6 +102,12 @@ public:
     void HandleExtAddressChange(void) { mInterface.HandleExtAddressChange(); }
 
     /**
+     * This method initiates the TREL radio link.
+     *
+     */
+    void Init(void);
+
+    /**
      * This method enables the TREL radio link.
      *
      */
