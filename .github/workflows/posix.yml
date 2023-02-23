@@ -29,9 +29,6 @@
 name: POSIX
 
 on:
-  push:
-    branches-ignore:
-      - 'dependabot/**'
   pull_request:
     branches:
       - 'main'
