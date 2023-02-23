@@ -170,7 +170,6 @@ jobs:
         name: cov-thread-border-router-docker
         path: /tmp/coverage/
     - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-      if: ${{ failure() }}
       with:
         name: thread-border-router-results
         path: |

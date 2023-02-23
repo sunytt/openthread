@@ -61,7 +61,7 @@ class TestTrelServiceDiscovery(thread_cert.TestCase):
         },
         BR2: {
             'name': 'BR2',
-            'allowlist': [BR1, ROUTER2],
+            'allowlist': [BR1],
             'is_otbr': True,
             'version': '1.2',
         },
@@ -105,12 +105,17 @@ class TestTrelServiceDiscovery(thread_cert.TestCase):
         br2_trel_peers = br2.get_trel_peers()
         print(br2_trel_peers)
 
-        br1.disable_ether()
-        br2.disable_ether()
-        br1.enable_ether()
-        br2.enable_ether()
+        #br1.disable_ether()
+        #br2.disable_ether()
+        #br1.enable_ether()
+        #br2.enable_ether()
 
-        self.simulator.go(5)
+        #br1.stop()
+        br2.stop()
+        self.simulator.go(60)
+        br2.start()
+        #br1.start()
+        self.simulator.go(config.LEADER_RESET_DELAY)
 
         br1_addrs = br1.get_ether_addrs()
         print(br1_addrs)
@@ -121,6 +126,7 @@ class TestTrelServiceDiscovery(thread_cert.TestCase):
         print(br1_trel_peers)
         br2_trel_peers = br2.get_trel_peers()
         print(br2_trel_peers)
+
 
 
     def verify(self, pv: PacketVerifier):
