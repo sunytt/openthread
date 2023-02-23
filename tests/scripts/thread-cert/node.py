@@ -1366,6 +1366,11 @@ class NodeImpl:
 
             raise
 
+    def get_trel_peers(self):
+        cmd = 'trel peers'
+        self.send_command(cmd)
+        return self._expect_command_output()
+
     def _encode_txt_entry(self, entry):
         """Encodes the TXT entry to the DNS-SD TXT record format as a HEX string.
 
