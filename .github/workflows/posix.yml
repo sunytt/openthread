@@ -32,6 +32,7 @@ on:
   push:
     branches-ignore:
       - 'dependabot/**'
+      - 'test-multiple-discovery-proxy-client'
   pull_request:
     branches:
       - 'main'

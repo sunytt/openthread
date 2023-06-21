@@ -3281,6 +3281,18 @@ class NodeImpl:
 
         return list(zip(ip, ttl))
 
+    def dns_resolve_service_instant(self, instance, service, server=None, port=53):
+        """
+        Sends a dns query and return instantly.
+
+        """
+        instance = self._escape_escapable(instance)
+        cmd = f'dns service {instance} {service}'
+        if server is not None:
+            cmd += f' {server} {port}'
+
+        self.send_command(cmd, True, False)
+
     def dns_resolve_service(self, instance, service, server=None, port=53):
         """
         Resolves the service instance and returns the instance information as a dict.

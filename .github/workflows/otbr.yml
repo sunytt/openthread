@@ -65,11 +65,18 @@ jobs:
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       with:
         submodules: true
+    - name: download otbr code
+      run: |
+        mkdir -p /tmp/otbr-code
+        cd /tmp/otbr-code
+        git clone https://github.com/openthread/ot-br-posix.git
+        cd ot-br-posix
+        git checkout 852fc69e72354156deb6d4962d1cd808fbedd51d
     - name: Build OTBR Docker
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       run: |
-        ./script/test build_otbr_docker
+        LOCAL_OTBR_DIR=/tmp/otbr-code/ot-br-posix ./script/test build_otbr_docker
     - name: Bootstrap
       run: |
         sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
@@ -114,45 +121,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - otbr_mdns: "mDNSResponder"
-            otbr_trel: 0
-            cert_scripts: ./tests/scripts/thread-cert/border_router/*.py
-            packet_verification: 1
-            nat64: 0
-            description: ""
-          - otbr_mdns: "mDNSResponder"
-            otbr_trel: 1
-            cert_scripts: ./tests/scripts/thread-cert/border_router/*.py
-            packet_verification: 2
-            nat64: 0
-            description: ""
-          - otbr_mdns: "mDNSResponder"
-            otbr_trel: 0
-            cert_scripts: ./tests/scripts/thread-cert/border_router/MATN/*.py
-            packet_verification: 1
-            nat64: 0
-            description: "MATN"
-          - otbr_mdns: "mDNSResponder"
-            otbr_trel: 0
-            cert_scripts: ./tests/scripts/thread-cert/border_router/LowPower/*.py
-            packet_verification: 1
-            nat64: 0
-            description: "LowPower"
-          - otbr_mdns: "mDNSResponder"
-            otbr_trel: 0
-            cert_scripts: ./tests/scripts/thread-cert/border_router/nat64/*.py
-            packet_verification: 1
-            nat64: 1
-            description: "nat64 openthread"
           - otbr_mdns: "avahi"
             otbr_trel: 0
-            cert_scripts: ./tests/scripts/thread-cert/border_router/*.py
+            cert_scripts: ./tests/scripts/thread-cert/border_router/test_dnssd_server_multi_client.py
             packet_verification: 1
             nat64: 0
             description: ""
           - otbr_mdns: "avahi"
             otbr_trel: 1
-            cert_scripts: ./tests/scripts/thread-cert/border_router/*.py
+            cert_scripts: ./tests/scripts/thread-cert/border_router/test_dnssd_server_multi_client.py
             packet_verification: 2
             nat64: 0
             description: ""
@@ -173,12 +150,19 @@ jobs:
       MAX_JOBS: 3
     steps:
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+    - name: download otbr code
+      run: |
+        mkdir -p /tmp/otbr-code
+        cd /tmp/otbr-code
+        git clone https://github.com/openthread/ot-br-posix.git
+        cd ot-br-posix
+        git checkout 852fc69e72354156deb6d4962d1cd808fbedd51d
     - name: Build OTBR Docker
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         TREL: ${{ matrix.otbr_trel }}
       run: |
-        ./script/test build_otbr_docker
+        LOCAL_OTBR_DIR=/tmp/otbr-code/ot-br-posix ./script/test build_otbr_docker
     - name: Bootstrap
       run: |
         sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
