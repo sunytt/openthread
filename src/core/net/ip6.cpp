@@ -1111,7 +1111,15 @@ Error Ip6::HandleDatagram(OwnedPtr<Message> aMessagePtr, const void *aLinkMessag
     {
         // Destination is multicast
 
-        forwardThread = !aMessagePtr->IsOriginThreadNetif();
+        //forwardThread = !aMessagePtr->IsOriginThreadNetif();
+        if (!aMessagePtr->IsOriginThreadNetif())
+        {
+            if (header.GetDestination().IsMulticastLargerThanRealmLocal() &&
+                Get<ThreadNetif>().IsMulticastSubscribed(header.GetDestination()))
+                {
+                    forwardThread = true;
+                }
+        }
 
 #if OPENTHREAD_FTD
         if (aMessagePtr->IsOriginThreadNetif() && header.GetDestination().IsMulticastLargerThanRealmLocal() &&
