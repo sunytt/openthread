@@ -2096,7 +2096,7 @@ Error Mle::SendChildUpdateRequest(ChildUpdateRequestMode aMode)
     destination.SetToLinkLocalAddress(mParent.GetExtAddress());
     SuccessOrExit(error = message->SendTo(destination));
 
-    Log(kMessageSend, kTypeChildUpdateRequestOfParent, destination);
+    Log(kMessageSend, kTypeChildUpdateRequestAsChild, destination);
 
     if (!IsRxOnWhenIdle())
     {
@@ -2117,12 +2117,13 @@ exit:
     return error;
 }
 
-Error Mle::SendChildUpdateResponse(const TlvList &aTlvList, const RxChallenge &aChallenge)
+Error Mle::SendChildUpdateResponse(const TlvList      &aTlvList,
+                                   const RxChallenge  &aChallenge,
+                                   const Ip6::Address &aDestination)
 {
-    Error        error = kErrorNone;
-    Ip6::Address destination;
-    TxMessage   *message;
-    bool         checkAddress = false;
+    Error      error = kErrorNone;
+    TxMessage *message;
+    bool       checkAddress = false;
 
     VerifyOrExit((message = NewMleMessage(kCommandChildUpdateResponse)) != nullptr, error = kErrorNoBufs);
     SuccessOrExit(error = message->AppendSourceAddressTlv());
@@ -2181,10 +2182,9 @@ Error Mle::SendChildUpdateResponse(const TlvList &aTlvList, const RxChallenge &a
         }
     }
 
-    destination.SetToLinkLocalAddress(mParent.GetExtAddress());
-    SuccessOrExit(error = message->SendTo(destination));
+    SuccessOrExit(error = message->SendTo(aDestination));
 
-    Log(kMessageSend, kTypeChildUpdateResponseOfParent, destination);
+    Log(kMessageSend, kTypeChildUpdateResponseAsChild, aDestination);
 
     if (checkAddress && HasUnregisteredAddress())
     {
@@ -2208,7 +2208,6 @@ void Mle::SendAnnounce(uint8_t aChannel, AnnounceMode aMode)
 void Mle::SendAnnounce(uint8_t aChannel, const Ip6::Address &aDestination, AnnounceMode aMode)
 {
     Error              error = kErrorNone;
-    ChannelTlv         channelTlv;
     MeshCoP::Timestamp activeTimestamp;
     TxMessage         *message = nullptr;
 
@@ -2217,10 +2216,7 @@ void Mle::SendAnnounce(uint8_t aChannel, const Ip6::Address &aDestination, Annou
     message->SetLinkSecurityEnabled(true);
     message->SetChannel(aChannel);
 
-    channelTlv.Init();
-    channelTlv.SetChannelPage(0);
-    channelTlv.SetChannel(Get<Mac::Mac>().GetPanChannel());
-    SuccessOrExit(error = channelTlv.AppendTo(*message));
+    SuccessOrExit(error = Tlv::Append<ChannelTlv>(*message, ChannelTlvValue(Get<Mac::Mac>().GetPanChannel())));
 
     switch (aMode)
     {
@@ -3472,7 +3468,7 @@ void Mle::HandleChildUpdateRequest(RxInfo &aRxInfo)
     // Source Address
     SuccessOrExit(error = Tlv::Find<SourceAddressTlv>(aRxInfo.mMessage, sourceAddress));
 
-    Log(kMessageReceive, kTypeChildUpdateRequestOfParent, aRxInfo.mMessageInfo.GetPeerAddr(), sourceAddress);
+    Log(kMessageReceive, kTypeChildUpdateRequestAsChild, aRxInfo.mMessageInfo.GetPeerAddr(), sourceAddress);
 
     // Challenge
     switch (aRxInfo.mMessage.ReadChallengeTlv(challenge))
@@ -3553,10 +3549,11 @@ void Mle::HandleChildUpdateRequest(RxInfo &aRxInfo)
     }
 #endif
 
-    SuccessOrExit(error = SendChildUpdateResponse(tlvList, challenge));
+    // Send the response to the requester, regardless if it's this device's parent or not
+    SuccessOrExit(error = SendChildUpdateResponse(tlvList, challenge, aRxInfo.mMessageInfo.GetPeerAddr()));
 
 exit:
-    LogProcessError(kTypeChildUpdateRequestOfParent, error);
+    LogProcessError(kTypeChildUpdateRequestAsChild, error);
 }
 
 void Mle::HandleChildUpdateResponse(RxInfo &aRxInfo)
@@ -3570,7 +3567,7 @@ void Mle::HandleChildUpdateResponse(RxInfo &aRxInfo)
     uint16_t    sourceAddress;
     uint32_t    timeout;
 
-    Log(kMessageReceive, kTypeChildUpdateResponseOfParent, aRxInfo.mMessageInfo.GetPeerAddr());
+    Log(kMessageReceive, kTypeChildUpdateResponseAsChild, aRxInfo.mMessageInfo.GetPeerAddr());
 
     switch (aRxInfo.mMessage.ReadResponseTlv(response))
     {
@@ -3711,13 +3708,13 @@ exit:
         }
     }
 
-    LogProcessError(kTypeChildUpdateResponseOfParent, error);
+    LogProcessError(kTypeChildUpdateResponseAsChild, error);
 }
 
 void Mle::HandleAnnounce(RxInfo &aRxInfo)
 {
     Error                     error = kErrorNone;
-    ChannelTlv                channelTlv;
+    ChannelTlvValue           channelTlvValue;
     MeshCoP::Timestamp        timestamp;
     const MeshCoP::Timestamp *localTimestamp;
     uint8_t                   channel;
@@ -3728,10 +3725,8 @@ void Mle::HandleAnnounce(RxInfo &aRxInfo)
 
     Log(kMessageReceive, kTypeAnnounce, aRxInfo.mMessageInfo.GetPeerAddr());
 
-    SuccessOrExit(error = Tlv::FindTlv(aRxInfo.mMessage, channelTlv));
-    VerifyOrExit(channelTlv.IsValid(), error = kErrorParse);
-
-    channel = static_cast<uint8_t>(channelTlv.GetChannel());
+    SuccessOrExit(error = Tlv::Find<ChannelTlv>(aRxInfo.mMessage, channelTlvValue));
+    channel = static_cast<uint8_t>(channelTlvValue.GetChannel());
 
     SuccessOrExit(error = Tlv::Find<ActiveTimestampTlv>(aRxInfo.mMessage, timestamp));
     SuccessOrExit(error = Tlv::Find<PanIdTlv>(aRxInfo.mMessage, panId));
@@ -4137,8 +4132,8 @@ const char *Mle::MessageTypeToString(MessageType aType)
         "Child ID Request",      // (2)  kTypeChildIdRequest
         "Child ID Request",      // (3)  kTypeChildIdRequestShort
         "Child ID Response",     // (4)  kTypeChildIdResponse
-        "Child Update Request",  // (5)  kTypeChildUpdateRequestOfParent
-        "Child Update Response", // (6)  kTypeChildUpdateResponseOfParent
+        "Child Update Request",  // (5)  kTypeChildUpdateRequestAsChild
+        "Child Update Response", // (6)  kTypeChildUpdateResponseAsChild
         "Data Request",          // (7)  kTypeDataRequest
         "Data Response",         // (8)  kTypeDataResponse
         "Discovery Request",     // (9)  kTypeDiscoveryRequest
@@ -4177,8 +4172,8 @@ const char *Mle::MessageTypeToString(MessageType aType)
     static_assert(kTypeChildIdRequest == 2, "kTypeChildIdRequest value is incorrect");
     static_assert(kTypeChildIdRequestShort == 3, "kTypeChildIdRequestShort value is incorrect");
     static_assert(kTypeChildIdResponse == 4, "kTypeChildIdResponse value is incorrect");
-    static_assert(kTypeChildUpdateRequestOfParent == 5, "kTypeChildUpdateRequestOfParent value is incorrect");
-    static_assert(kTypeChildUpdateResponseOfParent == 6, "kTypeChildUpdateResponseOfParent value is incorrect");
+    static_assert(kTypeChildUpdateRequestAsChild == 5, "kTypeChildUpdateRequestAsChild value is incorrect");
+    static_assert(kTypeChildUpdateResponseAsChild == 6, "kTypeChildUpdateResponseAsChild value is incorrect");
     static_assert(kTypeDataRequest == 7, "kTypeDataRequest value is incorrect");
     static_assert(kTypeDataResponse == 8, "kTypeDataResponse value is incorrect");
     static_assert(kTypeDiscoveryRequest == 9, "kTypeDiscoveryRequest value is incorrect");
@@ -4230,14 +4225,16 @@ const char *Mle::MessageTypeActionToSuffixString(MessageType aType, MessageActio
 {
     const char *str = "";
 
+    OT_UNUSED_VARIABLE(aAction); // Not currently used in non-FTD builds
+
     switch (aType)
     {
     case kTypeChildIdRequestShort:
         str = " - short";
         break;
-    case kTypeChildUpdateRequestOfParent:
-    case kTypeChildUpdateResponseOfParent:
-        str = (aAction == kMessageReceive) ? " from parent" : " to parent";
+    case kTypeChildUpdateRequestAsChild:
+    case kTypeChildUpdateResponseAsChild:
+        str = " as child";
         break;
     case kTypeParentRequestToRouters:
         str = " to routers";
@@ -4804,16 +4801,10 @@ exit:
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 Error Mle::TxMessage::AppendCslChannelTlv(void)
 {
-    CslChannelTlv cslChannel;
-
     // CSL channel value of zero indicates that the CSL channel is not
     // specified. We can use this value in the TLV as well.
 
-    cslChannel.Init();
-    cslChannel.SetChannelPage(0);
-    cslChannel.SetChannel(Get<Mac::Mac>().GetCslChannel());
-
-    return Append(cslChannel);
+    return Tlv::Append<CslChannelTlv>(*this, ChannelTlvValue(Get<Mac::Mac>().GetCslChannel()));
 }
 
 Error Mle::TxMessage::AppendCslTimeoutTlv(void)

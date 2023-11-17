@@ -2341,6 +2341,21 @@ Gets the IPv4 configured CIDR in the NAT64 translator.
 Done
 ```
 
+### nat64 cidr \<IPv4 address\>
+
+Sets the IPv4 CIDR in the NAT64 translator.
+
+Note:
+
+- `OPENTHREAD_CONFIG_NAT64_TRANSLATOR_ENABLE` is required.
+- A valid CIDR must have a non-zero prefix length.
+- When updating the CIDR, NAT64 translator will be reset and all existing sessions will be expired.
+
+```bash
+> nat64 cidr 192.168.100.0/24
+Done
+```
+
 ### nat64 disable
 
 Disable NAT64 functions, including the translator and the prefix publishing.
@@ -3616,7 +3631,6 @@ Done
 > trel peers list
 001 ExtAddr:5e5785ba3a63adb9 ExtPanId:f0d9c001f00d2e43 SockAddr:[fe80:0:0:0:cc79:2a29:d311:1aea]:9202
 002 ExtAddr:ce792a29d3111aea ExtPanId:dead00beef00cafe SockAddr:[fe80:0:0:0:5c57:85ba:3a63:adb9]:9203
->>>>>>> [trel] implement new TREL model using DNS-SD
 Done
 ```
 
